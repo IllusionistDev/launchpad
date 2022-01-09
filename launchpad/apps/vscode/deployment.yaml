@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {name}
+spec:
+  selector:
+    matchLabels:
+      app: {name}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {name}
+    spec:
+      containers:
+      - image: codercom/code-server:latest
+        name: {name}
+        envFrom:
+        - secretRef:
+            name: secret-{name}
+        ports:
+        - containerPort: 8080
+          name: {name}
+        volumeMounts:
+        - name: pv-{name}
+          mountPath: /config
+      volumes:
+      - name: pv-{name}
+        persistentVolumeClaim:
+          claimName: pvc-{name}

@@ -1,0 +1,78 @@
+version: "3.6"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    container_name: launchpad.web
+    environment:
+      APP_ENV: dev
+    volumes:
+      - ./launchpad/:/launchpad/
+    ports:
+      - "8008:8000"
+    command: /bin/sh -c "sh scripts/entrypoint.sh python manage.py runserver 0.0.0.0:8000"
+    networks:
+      - postgres_net
+      - redis_net
+
+  db:
+    image: postgres:12
+    restart: unless-stopped
+    container_name: launchpad.db
+    ports:
+      - 5432
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: launchpad_db
+    networks:
+      - postgres_net
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: dev
+    command: /bin/sh -c "sh scripts/worker.sh"
+    container_name: launchpad.celery
+    volumes:
+      - ./launchpad/:/launchpad/
+    networks:
+      - redis_net
+      - postgres_net
+
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: dev
+    command: /bin/sh -c "sh scripts/beat.sh"
+    container_name: launchpad.beat
+    volumes:
+      - ./launchpad/:/launchpad/
+    networks:
+      - redis_net
+      - postgres_net
+
+  redis:
+    image: redis:6
+    container_name: launchpad.redis
+    ports:
+      - "6388:6379"
+    volumes:
+      - ./redis-data:/data
+    networks:
+      - redis_net
+
+networks:
+  postgres_net:
+  redis_net:
