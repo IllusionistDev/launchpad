@@ -1,4 +1,4 @@
-# Launchpad
+# Launchpad ![ci](https://github.com/Qubad786/launchpad/actions/workflows/ci.yaml/badge.svg)
 This is your launchpad that comes with a variety of applications waiting to run on your kubernetes cluster with a single click.
 
 # Development setup
