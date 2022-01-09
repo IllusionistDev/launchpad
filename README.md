@@ -9,7 +9,7 @@ This is your launchpad that comes with a variety of applications waiting to run 
 3. DockerCompose
 4. A functioning Kubernetes cluster (`~/.kube/config` is used with current context by default)
 
-### Minikube Setup (optional – if you have cluster already)
+### Minikube Cluster Setup
 ```bash
 # If you're on MBP M1 follow installation steps below OR
 # follow instructions for other platforms @
