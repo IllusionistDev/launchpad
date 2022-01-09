@@ -1,5 +1,6 @@
 
-from rest_framework import views, status
+from rest_framework import status
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 
@@ -11,14 +12,14 @@ from .serializers import (
 )
 
 
-class ListAppsAPIView(views.APIView):
+class ListAppsAPIView(GenericAPIView):
     permission_classes = (AllowAny,)
 
     def get(self, request):
         return Response(data=Session.get_valid_apps(), status=status.HTTP_200_OK)
 
 
-class LaunchAppAPIView(views.APIView):
+class LaunchAppAPIView(GenericAPIView):
     permission_classes = (AllowAny,)
     serializer_class = AppRequestSerializer
 
@@ -30,7 +31,7 @@ class LaunchAppAPIView(views.APIView):
         serializer.is_valid(raise_exception=True)
         launched_app = Session.install_app(
             app_name=serializer.data['app'],
-            session_id=serializer.data['session_id'],
+            session_id=serializer.data.get('session_id'),
         )
         return Response(
             data=LaunchedAppSerializer(launched_app).data,
@@ -38,7 +39,7 @@ class LaunchAppAPIView(views.APIView):
         )
 
 
-class UninstallAppAPIView(views.APIView):
+class UninstallAppAPIView(GenericAPIView):
     permission_classes = (AllowAny,)
     serializer_class = AppRequestSerializer
 
@@ -48,8 +49,8 @@ class UninstallAppAPIView(views.APIView):
         """
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        if session_id := serializer.data['session_id']:
-            Session.uninstall(
+        if session_id := serializer.data.get('session_id'):
+            Session.uninstall_app(
                 app_name=serializer.data['app'],
                 session_id=session_id,
             )

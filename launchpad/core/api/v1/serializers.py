@@ -11,7 +11,7 @@ class SessionSerializer(serializers.ModelSerializer):
 
 
 class LaunchedAppSerializer(serializers.ModelSerializer):
-    session = SessionSerializer()
+    session = SessionSerializer(source='created_by')
 
     class Meta:
         model = LaunchedApp
@@ -26,7 +26,7 @@ class AppRequestSerializer(serializers.Serializer):
     session_id = serializers.UUIDField(required=False)
 
     def validate_session_id(self, session_id):
-        session = Session.objects.get_or_none(session_id=session_id)
+        session = Session.objects.get_or_none(id=session_id)
         if session:
             if session.expires_at < timezone.now():
                 raise serializers.ValidationError(f"Your session '{session_id}' has expired.")

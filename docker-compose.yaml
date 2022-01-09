@@ -11,14 +11,19 @@ services:
     container_name: launchpad.web
     environment:
       APP_ENV: dev
+      DJANGO_SUPERUSER_PASSWORD: admin
+      PYTHONWARNINGS: "ignore:Unverified HTTPS request"
     volumes:
-      - ./launchpad/:/launchpad/
+      - './launchpad/:/launchpad/'
+      - '~/.kube/config:/.kube/config:ro'
+      - '${HOME}/.minikube/:${HOME}/.minikube/:ro'
     ports:
       - "8080:8000"
     command: /bin/sh -c "sh scripts/entrypoint.sh python manage.py runserver 0.0.0.0:8000"
     networks:
       - postgres_net
       - redis_net
+      - minikube
 
   db:
     image: postgres:12
@@ -40,13 +45,17 @@ services:
     restart: unless-stopped
     environment:
       APP_ENV: dev
+      PYTHONWARNINGS: "ignore:Unverified HTTPS request"
     command: /bin/sh -c "sh scripts/worker.sh"
     container_name: launchpad.celery
     volumes:
-      - ./launchpad/:/launchpad/
+      - './launchpad/:/launchpad/'
+      - '~/.kube/config:/.kube/config:ro'
+      - '${HOME}/.minikube/:${HOME}/.minikube/:ro'
     networks:
       - redis_net
       - postgres_net
+      - minikube
 
   beat:
     build:
@@ -55,13 +64,17 @@ services:
     restart: unless-stopped
     environment:
       APP_ENV: dev
+      PYTHONWARNINGS: "ignore:Unverified HTTPS request"
     command: /bin/sh -c "sh scripts/beat.sh"
     container_name: launchpad.beat
     volumes:
-      - ./launchpad/:/launchpad/
+      - './launchpad/:/launchpad/'
+      - '~/.kube/config:/.kube/config:ro'
+      - '${HOME}/.minikube/:${HOME}/.minikube/:ro'
     networks:
       - redis_net
       - postgres_net
+      - minikube
 
   redis:
     image: redis:6
@@ -76,3 +89,6 @@ services:
 networks:
   postgres_net:
   redis_net:
+  minikube:
+    external: true
+    name: minikube

@@ -23,7 +23,7 @@ urlpatterns = [
     path(
         'api/v1/',
         include([
-            path('launchpad/', include(('launchpad.core.api.v1.urls', 'launchpad'), namespace='launchpad-v1')),
+            path('launchpad/', include(('core.api.v1.urls', 'launchpad'), namespace='launchpad-v1')),
         ]),
     ),
     path('swagger/', schema_view.with_ui('swagger'), name='schema-swagger-ui'),

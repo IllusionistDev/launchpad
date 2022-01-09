@@ -1,10 +1,12 @@
 import os
-import random
+import logging
 
 from django.conf import settings
 
 from catalog.base import App, Resource
 from catalog.utils import base64_encode
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_VSCODE_PASSWORD = 'admin'
 
@@ -14,7 +16,7 @@ class VSCode(App):
     VSCode Application.
     """
     app_name = 'vscode'
-    app_manifests_path = os.path.join(settings.BASE_DIR, 'catalog/apps/vscode/')
+    app_manifests_path = os.path.join(settings.BASE_DIR, 'catalog/manifests/vscode/')
 
     def __init__(self, session, password=DEFAULT_VSCODE_PASSWORD) -> None:
         self.session = session
@@ -27,9 +29,7 @@ class VSCode(App):
         return manifest.format(name=self.app_name, password=base64_encode(self.password))
 
     def normalize_service_manifest(self, manifest):
-        port = random.randint(9000, 9999)
-        # TODO: check if the port is used by some session.
-        return manifest.format(name=self.app_name, port=port)
+        return manifest.format(name=self.app_name, port=self.allocate_port())
 
     def deployment_pre_create(self):
         # Create resources that needs to be there before the

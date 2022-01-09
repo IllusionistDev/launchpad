@@ -21,8 +21,11 @@ class SessionQuerySet(models.QuerySet):
     def expired(self):
         return self.filter(expires_at__lte=timezone.now())
 
+    def with_launched_apps(self):
+        return self.filter(apps__isnull=False)
+
     def get_or_none(self, **filter_criteria):
-        self.objects.filter(**filter_criteria).first()
+        return self.filter(**filter_criteria).first()
 
 
 class Session(models.Model):
@@ -71,30 +74,28 @@ class Session(models.Model):
         return launched_app
 
     @classmethod
-    def uninstall(cls, app_name, session_id):
+    def uninstall_app(cls, app_name, session_id):
         """
         Uninstall an app for a session.
         """
         # create anonymous session if not already
-        session = Session.objects.get_or_none(session_id=session_id)
+        session = Session.objects.get_or_none(id=session_id)
         if session:
-            app = LaunchedApp.objects.get_or_none(app_name=app_name, session=session)
+            app = LaunchedApp.objects.get_or_none(app_name=app_name, created_by=session)
             if app:
-                # uninstall app from the cluster
-                Catalog.uninstall_app(app, session=session)
-                # delete the launched app instance
-                app.delete()
+                app.uninstall()
+
         return session
 
 
 class LaunchedAppQueryset(models.QuerySet):
     def get_or_none(self, **filter_criteria):
-        self.objects.filter(**filter_criteria).first() 
+        return self.filter(**filter_criteria).first()
 
 
 class LaunchedApp(models.Model):
     created_by = models.ForeignKey(Session, related_name='apps', on_delete=models.CASCADE)
-    app_name = models.CharField(max_length=255, choices=App.choices, default=App.VSCODE)
+    app_name = models.CharField(max_length=255, choices=App.choices(), default=App.VSCODE)
 
     url = models.URLField(max_length=255)
     status = models.CharField(max_length=255)
@@ -105,5 +106,21 @@ class LaunchedApp(models.Model):
 
     objects = LaunchedAppQueryset.as_manager()
 
+    def update_from_cluster(self):
+        app_instance = Catalog.update_app_from_cluster(
+            app_name=self.app_name,
+            session=self.created_by
+        )
+        self.url = app_instance.details['app_url']
+        self.status = app_instance.details['status']
+        self.status_updated_at = app_instance.details['last_checked_at']
+        self.save(update_fields=['url', 'status', 'status_updated_at'])
+
+    def uninstall(self):
+        # uninstall app from the cluster
+        Catalog.uninstall_app(self.app_name, session=self.created_by)
+        # delete the launched app instance
+        self.delete()
+
     def __str__(self):
-        return f"<{self.app} | status: {self.status} @ {self.status_updated_at} | launched @ {self.launched_at}>"
+        return f"<{self.app_name} | status: {self.status} @ {self.status_updated_at} | launched @ {self.launched_at}>"

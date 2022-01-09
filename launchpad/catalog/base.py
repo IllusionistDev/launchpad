@@ -1,14 +1,16 @@
 import abc
 import os
 import yaml
+import random
 import json
 import time
 import logging
-from functools import cached_property
 from enum import Enum
+from functools import cached_property
 
 from django.conf import settings
 from django.utils import timezone
+from django.core.cache import cache
 from kubernetes import config, client
 
 from catalog.exceptions import ManifestNotFound
@@ -17,9 +19,21 @@ __all__ = ['App', 'Resource']
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_VSCODE_PASSWORD = 'admin'
 
-config.load_kube_config(config_file=settings.DEFAULT_KUBE_CONFIG)
+def load_kube_config():
+    config.load_kube_config(config_file=settings.KUBE_CONFIG)
+    if settings.DEBUG:
+        # Development setup is running minikube, which needs to
+        # be accessible via minikube network.
+        conf_copy = config.kube_config.Configuration.get_default_copy()
+        conf_copy.host = 'https://minikube:8443'
+        conf_copy.verify_ssl = False
+        config.kube_config.Configuration.set_default(conf_copy)
+
+
+# loading config at module level so api clients
+# are correctly initialized.
+load_kube_config()
 
 
 class Resource(Enum):
@@ -63,6 +77,38 @@ class App(abc.ABC):
         Resource.DEPLOYMENT: _k8s_apps_v1.create_namespaced_deployment,
         Resource.SERVICE: _k8s_core_v1.create_namespaced_service,
     }
+    _ports_cache_key = 'app_ports'
+    _ports_min = 9000
+    _ports_max = 65535
+
+    @cached_property
+    def _allocated_ports(self):
+        return json.loads(cache.get(self._ports_cache_key) or '[]')
+
+    def is_port_avaliable(self, port):
+        return port not in self._allocated_ports
+
+    def allocate_port(self):
+        """
+        Allocate port in range of 9000 -> 65535
+        """
+        port = random.randint(self._ports_min, self._ports_max)
+        while True:
+            if self.is_port_avaliable(port):
+                break
+            port = random.randint(self._ports_min, self._ports_max)
+            time.sleep(0.05)
+
+        cache.set(self._ports_cache_key, json.dumps(self._allocated_ports + [port]))
+        return port
+
+    def release_port(self, port):
+        ports = self._allocated_ports
+        try:
+            ports.remove(port)
+        except ValueError:
+            return
+        cache.set(self._ports_cache_key, json.dumps(ports))
 
     @cached_property
     def namespace(self):
@@ -110,8 +156,7 @@ class App(abc.ABC):
                 # status again.
                 time.sleep(0.3)
                 app_url = self.get_app_url()
-                logger.info(
-                    "Waiting for '%s' to be assigned a public IP address..", self.app_name)
+                logger.info("Waiting for '%s' to be assigned a public IP address..", self.app_name)
 
         if wait_for_readiness:
             wait_for_workload_to_be_ready()
@@ -229,8 +274,16 @@ class App(abc.ABC):
     def uninstall(self, wait_until_uninstalled=False):
         """
         Uninstall the Application.
-        NOTE: Waits until namespace is terminated, check every 1000ms.
+
+        Arguments:
+            wait_until_uninstalled: Waits until namespace is terminated, check every 1000ms.
         """
+        # retrieve in-use port so it can be released.
+        port = None
+        self.update_app_details_from_cluster()
+        if self.details['app_url']:
+            port = int(self.details['app_url'].rsplit(':', 1)[1])
+
         try:
             self._k8s_core_v1.delete_namespace(name=self.namespace)
         except client.ApiException as exc:
@@ -251,3 +304,7 @@ class App(abc.ABC):
             logger.info("Uninstalled '%s' successfully.", self.namespace)
         else:
             logger.info("Uninstall has been started for '%s'.", self.namespace)
+
+        if port:
+            # release port now.
+            self.release_port(port=port)

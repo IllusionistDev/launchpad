@@ -1,5 +1,4 @@
 import enum
-from core.models import LaunchedApp, Session
 
 from .vscode import VSCode
 
@@ -37,7 +36,7 @@ class Catalog:
         return list(App.all().keys())
 
     @classmethod
-    def install_app(cls, app_name: str, session: Session, **app_kwargs):
+    def install_app(cls, app_name: str, session, **app_kwargs):
         """
         Launches app into the cluster.
         """
@@ -48,7 +47,18 @@ class Catalog:
         return app_instance
 
     @classmethod
-    def uninstall_app(cls, app_name: LaunchedApp, session: Session, **app_kwargs):
+    def update_app_from_cluster(cls, app_name: str, session, **app_kwargs):
+        """
+        Update app information from the cluster.
+        """
+        app_enum = App.to_enum_item(app_name)
+        app_class = cls.app_classes[app_enum]
+        app_instance = app_class(session=str(session), **app_kwargs)
+        app_instance.update_app_details_from_cluster()
+        return app_instance
+
+    @classmethod
+    def uninstall_app(cls, app_name: str, session, **app_kwargs):
         """
         Uninstall app from the cluster.
         """

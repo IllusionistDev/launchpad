@@ -7,7 +7,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2.11/ref/settings/
 """
 import os
-from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -50,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_celery_beat',
     'django_celery_results',
+    'django_extensions',
     'debug_toolbar',
     'drf_yasg',
     'rest_framework',
@@ -60,7 +60,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -137,6 +136,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
+STATIC_ROOT = 'static/'
 STATIC_URL = 'static/'
 
 # Default primary key field type
@@ -189,4 +189,5 @@ CACHES = {
 }
 
 # App settings
+ENABLE_CELERY_PERIODIC_TASKS = env('ENABLE_CELERY_PERIODIC_TASKS', default=True)
 KUBE_CONFIG = env('KUBE_CONFIG', default='~/.kube/config')
