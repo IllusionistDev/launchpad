@@ -14,7 +14,7 @@ services:
     volumes:
       - ./launchpad/:/launchpad/
     ports:
-      - "8008:8000"
+      - "8080:8000"
     command: /bin/sh -c "sh scripts/entrypoint.sh python manage.py runserver 0.0.0.0:8000"
     networks:
       - postgres_net
