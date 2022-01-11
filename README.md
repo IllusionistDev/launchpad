@@ -47,6 +47,8 @@ Launchpad runs the following service containers:
 ### One liner installation script
 ```bash
 source <(curl -s https://raw.githubusercontent.com/Qubad786/launchpad/master/install.sh)
+
+# Now, http://localhost:8080/swagger should have the development server running.
 ```
 
 ### Admin Panel
@@ -97,6 +99,12 @@ make migrate
 
 # install requirements
 make requirements
+
+# run tests
+make test
+
+# run lint i.e. flake8
+make flake8
 
 # stop services
 make stop
